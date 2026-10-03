@@ -1,395 +1,243 @@
+# 🖥️ POCO | AI 기반 자세 코칭 시스템
+
+> 사용자의 자세를 인식하고, 실시간 피드백과 모니터 환경 조절, 일일 리포트로 연결하는 자세 코칭 시스템
+
+## 📌 Overview
+
+POCO는 카메라 영상에서 신체 특징을 추출하고, **사용자별 기준 자세와 GRU 모델을 활용해 정상·비대칭·거북목·턱 괴기 자세를 분류**하는 Raspberry Pi 기반 프로젝트입니다.
+
+판단 결과는 자세 알림과 일일 리포트로 연결됩니다. **V1에서는 비전 기반 자세 코칭을 구현**했고, **V2에서는 정상 자세일 때 모니터 위치를 조절하고 IMU PID 제어로 수평을 유지하는 모니터암까지 확장**했습니다. 잘못된 자세를 그대로 따라가기보다, 자세 판단을 기준으로 환경 조절 여부를 결정합니다.
+
+| 👁️ 자세 인식 | 🔔 코칭·환경 조절 | 📊 기록·분석 |
+|---|---|---|
+| 카메라 → MediaPipe 특징 추출 → 개인별 기준값 보정 → GRU 분류 | 자세 알림 · 정상 자세에서 모니터 위치 추종 · 수평 유지 | 날짜별 기록 · 자세 분포 · 문제 유형별 피드백 |
+
+<details open>
+<summary>🦾 V2 확장 · 4축 모니터암 프로토타입</summary>
+
 <p align="center">
-  <img src="https://github.com/VisionAITeamProject/ImageUploadRepo/blob/e77c6f5d0e1ae55fe3329129abc43a7e8f1f03b3/%EC%9E%90%EC%84%B8%EC%BD%94%EC%B9%AD.png" alt="POCO 자세 코칭" width="100%" />
+  <img src="assets/monitor-arm-cropped.png" alt="POCO 4축 모니터암 프로토타입 정면과 측면" width="720" />
 </p>
 
-# POCO (Vision Pose Coach)
+*개발완료보고서에 사용한 실물 사진 · 정면 / 측면*
 
-> 비전 AI 자세 판단과 4축 모니터암 자동 추종을 결합한 Raspberry Pi 기반 자세 코칭 시스템
+</details>
 
-POCO는 카메라 영상에서 사용자의 자세를 실시간으로 분류하고, 잘못된 자세가 지속되면 부저로 교정을 유도하며, 측정 기록을 일일 리포트로 보여주는 시스템입니다.
-
-현재 버전은 기존의 Pose/Face 기반 자세·피로도 분석 구조에 다음 모니터암 기능을 통합했습니다.
-
-- ToF 거리와 Pose 눈 간격을 결합한 사용자 위치 추정
-- Motor 1·2의 2-Link IK 기반 전후 자동 추종
-- ADXL345 IMU와 Motor 3·4를 이용한 모니터 수평 유지
-- 사용자 미검출, 낮은 자세 신뢰도, 비정상 자세에 대한 모터 안전 정지
-- 초기 준비, 사용자별 보정 프로필, 측정 종료 후 휴식 자세 복귀
-
-> [!IMPORTANT]
-> 현재 기본 실행 모드는 `POSE_ONLY`입니다. 자세 판단과 모니터암 제어는 활성화되며, Face 피로도 Process는 실행되지 않습니다. 자세와 피로도를 함께 사용하려면 `WorkSpace/pyQt/managers/vision_process_manager_profile.py`의 `PROFILE_MODE`를 `BOTH`로 변경하고 Face 기준값까지 보정해야 합니다.
-
-## 주요 기능
-
-| 영역 | 기능 |
+| 항목 | 내용 |
 |---|---|
-| 자세 인식 | MediaPipe Pose 랜드마크와 TFLite GRU를 이용해 `Optimal`, `Asymmetric`, `Forward Head`, `Chin Propping` 분류 |
-| 피로도 인식 | MediaPipe Face 랜드마크와 TFLite GRU를 이용해 `Normal`, `Drowsy` 분류 (`BOTH`/`FACE_ONLY` 모드) |
-| 개인화 보정 | 사용자 기준 자세, ToF·눈 간격, IMU 기준값, 모터 시작 각도를 함께 저장 |
-| 사용자 프로필 | 최대 4개 슬롯에 보정 묶음을 저장하고 다음 실행에서 다시 적용 |
-| 모니터암 추종 | ToF 70% + Vision 30%로 사용자 X 위치를 추정하고 Motor 1·2를 동시 제어 |
-| 수평 유지 | IMU X/Y 오차를 PID로 보정해 Motor 3·4 짐벌 제어 |
-| 자세 알림 | 나쁜 자세의 유지 시간, 반복 횟수, Strong Alert, Cooldown을 적용해 GPIO18 부저 구동 |
-| 안전 제어 | ToF/랜드마크 유실, 비정상 자세, 낮은 신뢰도에서 자동 추종 중지; 5초 미검출 시 초기 작업 자세 복귀 |
-| 측정 기록 | 측정 결과를 날짜별 CSV로 누적 저장 |
-| 일일 리포트 | Streamlit과 Plotly로 자세 시간, 빈도, 점수와 피드백 시각화 |
+| Team | 4명 |
+| My Role | PyQt UI·Streamlit 리포트, 소프트웨어 구조 설계·코드 통합, 멀티프로세싱, IMU 기반 PID 수평제어, 성능 측정·분석 |
+| Platform | Raspberry Pi 5 · 카메라 · 4축 모니터암 |
 
-## `mainpyQt.py` 실행 흐름
+### 🛠️ Stack
 
-### 전체 구조
+![Python](https://img.shields.io/badge/Python-3776AB?style=flat-square&logo=python&logoColor=FFD343)
+![PyQt5](https://img.shields.io/badge/PyQt5-41CD52?style=flat-square&logo=qt&logoColor=black)
+![Streamlit](https://img.shields.io/badge/Streamlit-FF4B4B?style=flat-square&logo=streamlit&logoColor=white)
+![Plotly](https://img.shields.io/badge/Plotly-3F4F75?style=flat-square&logo=plotly&logoColor=white)
+![Raspberry Pi 5](https://img.shields.io/badge/Raspberry_Pi_5-A22846?style=flat-square&logo=raspberrypi&logoColor=white)
+![Multiprocessing](https://img.shields.io/badge/Multiprocessing-0078D4?style=flat-square)
+![Shared Memory](https://img.shields.io/badge/Shared_Memory-6F42C1?style=flat-square)
+![IMU](https://img.shields.io/badge/IMU-00897B?style=flat-square)
+![PID Control](https://img.shields.io/badge/PID_Control-E67E22?style=flat-square)
 
-```mermaid
-flowchart TD
-    A[mainpyQt.py] --> B[PyQt Main Process]
-    B --> C[CameraWorker QThread]
-    C --> D[PiCamera2 / OpenCV<br/>320×240, 30 FPS]
-    C --> E[Shared Memory Ring<br/>4 slots]
-    E --> F[Pose Process]
-    E -. BOTH/FACE_ONLY .-> G[Face Process]
-    F --> H[Pose Landmark / Feature / GRU]
-    G --> I[Face Landmark / Feature / GRU]
-    H --> J[VisionResultWorker]
-    I --> J
-    J --> B
-    H --> K[Hardware Process]
-    I -. 상태 전달 .-> K
-    B <-->|State / Event IPC| K
-    K --> L[ToF + Vision Fusion]
-    K --> M[ADXL345 IMU]
-    L --> N[Motor 1·2<br/>IK / SyncWrite]
-    M --> O[Motor 3·4<br/>Direct PID]
-    H --> P[Posture Alert]
-    P --> Q[GPIO18 Passive Buzzer]
-    J --> R[CSV Session Log]
-    R --> S[Streamlit Report]
-```
+자세 인식 파이프라인은 MediaPipe와 TensorFlow Lite 기반 GRU 모델을 사용합니다.
 
-카메라는 Main Process의 `CameraWorker`가 한 번만 읽습니다. 활성화된 Pose/Face Process는 동일 프레임을 각자의 Shared Memory Ring에서 읽으므로, 카메라 장치를 여러 Process가 중복 점유하지 않습니다.
+## 🌱 Project Evolution
 
-실시간 랜드마크·센서처럼 최신값만 필요한 데이터는 크기 1의 State Queue로 전달하고, 시작/종료/보정 완료/ACK처럼 유실되면 안 되는 명령은 순서를 보장하는 Event Queue로 분리합니다.
-
-### 1. 프로그램 시작
-
-```text
-python WorkSpace/pyQt/mainpyQt.py
-  → QApplication 생성
-  → pocoApplication_Qss.ui 로드
-  → 알림 설정과 하드웨어 설정 JSON 로드
-  → 사용자 프로필 슬롯 확인
-  → PyQt 이벤트 루프 시작
-```
-
-처음 창이 열릴 때는 카메라, AI Process, Hardware Process를 바로 생성하지 않습니다. 사용자가 `초기값 준비`, `프로필`, `수동조작` 중 하나를 선택할 때 `CameraWorker`가 생성되며 다음 자원이 시작됩니다.
-
-- Linux: PiCamera2를 우선 사용하고 실패하면 OpenCV 카메라로 전환
-- Windows/기타 환경: OpenCV 기본 카메라 사용
-- `HardwareProcess`: IMU, ToF, Motor 1~4, 부저 초기화
-- `PoseProcess`: 기본 모드에서 MediaPipe Pose 초기화
-- `FaceProcess`: `BOTH` 또는 `FACE_ONLY`일 때만 초기화
-- `VisionResultWorker`: Process 결과와 하드웨어 State/Event를 PyQt Signal로 전달
-
-카메라는 30 FPS로 읽고, GUI 영상은 15 FPS로 갱신합니다. AI 모델과 Scaler는 앱 시작 시가 아니라 실제 측정을 시작할 때 지연 로딩합니다.
-
-### 2. 새 사용자 초기값 설정
-
-새 보정은 반드시 아래 순서로 진행합니다.
-
-```mermaid
-flowchart LR
-    A[초기값 준비] --> B[Motor 1~4 연결 확인]
-    B --> C[휴식 자세 → 작업 시작 위치]
-    C --> D[Motor 1·2 IK / Motor 3·4 조그로 위치 조정]
-    D --> E[ToF + 눈 간격 5초 평균]
-    E --> F[준비 완료]
-    F --> G[초기값 측정 시작]
-    G --> H[IMU X/Y 기준값 보정]
-    H --> I[Pose/Face Feature 5초 수집]
-    I --> J[Baseline 저장]
-    J --> K[선택: 프로필 슬롯 저장]
-```
-
-#### 2-1. 모니터암 초기 준비
-
-`초기값 준비` 버튼은 카메라 프리뷰와 Pose 눈 랜드마크 처리를 켜고 모니터암 준비 창을 엽니다.
-
-1. Servo 1~4 연결, Ping, Calibration 정보를 확인합니다.
-2. Motor 1·2를 휴식 자세에서 작업 시작 위치로 안전하게 이동합니다.
-3. 필요하면 사용자 X, 사용자-모니터 고정거리, 모니터 높이를 입력해 IK 위치를 조정합니다.
-4. Motor 3·4를 조그 방식으로 움직여 모니터 수평을 맞춥니다.
-5. ToF 사용자 거리와 MediaPipe 눈 간격을 5초간 평균 측정합니다.
-6. Motor 준비, 작업 위치 도착, 센서 평균 저장이 모두 완료되어야 준비 창을 종료할 수 있습니다.
-
-이 단계에서 저장되는 모니터암 보정값은 `WorkSpace/data/settings/monitor_arm_user_calibration.json`에 기록됩니다.
-
-#### 2-2. IMU와 Vision 기준값 측정
-
-`초기값 측정시작` 버튼을 누르면 먼저 Hardware Process가 ADXL345의 X/Y 기준값을 측정합니다. IMU와 Motor 1~4, 모니터암 준비값이 모두 유효하다는 ACK를 받은 뒤에만 Pose/Face 기준 자세 수집이 시작됩니다.
-
-- Pose 기준값: `WorkSpace/saved_model/baseline.pkl`
-- Face 기준값: `WorkSpace/saved_model/baseline_face.pkl`
-- 기준값 수집 시간: 유효 Feature가 처음 들어온 시점부터 5초
-- 유효 샘플이 부족하면 기존 정상 baseline을 덮어쓰지 않음
-
-보정이 끝나면 현재 기준값을 4개의 사용자 프로필 슬롯 중 하나에 저장할 수 있습니다. 프로필에는 Vision baseline뿐 아니라 ToF·눈 간격, IMU 기준값, Motor 1~4 시작 각도가 함께 저장됩니다.
-
-### 3. 기존 사용자 프로필 불러오기
-
-`프로필` 버튼에서 저장된 슬롯을 고르면 다음 항목을 한 번에 복원합니다.
-
-```text
-Pose/Face baseline
-  + ToF·눈 간격 기준값
-  + IMU X/Y 기준값
-  + Motor 1~4 작업 시작 기준 각도
-  → Hardware Process APPLY_USER_PROFILE
-  → USER_PROFILE_APPLIED ACK
-  → 측정 시작 버튼 활성화
-```
-
-프로필 데이터는 `WorkSpace/data/user_profiles/slot_1`부터 `slot_4`까지 저장됩니다. 프로필 적용은 저장된 모터 각도를 기준 정보로 복원하며, 불러오는 순간 모터를 그 각도로 자동 이동시키지는 않습니다.
-
-### 4. 실시간 측정
-
-`측정 시작` 버튼을 누르면 다음 조건을 먼저 검사합니다.
-
-- 현재 모드에 필요한 Pose/Face baseline 존재
-- IMU가 현재 세션에서 보정되었고 사용 가능함
-- Motor 1~4가 연결·활성·준비 상태임
-- Pose 모드에서는 ToF·눈 간격 세션 보정값이 준비됨
-
-검사를 통과하면 Pose/Face Process가 baseline, Scaler, TFLite GRU 모델을 로드합니다. 모든 활성 Process의 시작 ACK가 도착한 후에만 Shared Memory 프레임 공급을 재개합니다. 모델 로딩 중 Ring이 가득 차는 것을 막기 위한 절차입니다.
-
-#### 자세·피로도 판단
-
-```text
-카메라 프레임
-  → MediaPipe Landmark
-  → Pose 10개 / Face 4개 Feature
-  → 사용자 baseline 차감
-  → 최근 30프레임 GRU Window
-  → 5프레임마다 TFLite 추론
-```
-
-현재 기본 `POSE_ONLY` 모드의 자세 라벨은 다음과 같습니다.
-
-| Index | Label | 의미 |
-|---:|---|---|
-| 0 | `Optimal` | 정상 자세 |
-| 1 | `Asymmetric` | 좌우 비대칭 |
-| 2 | `Forward Head` | 거북목/머리 전방 자세 |
-| 3 | `Chin Propping` | 턱 괴기 |
-
-`BOTH` 모드에서는 Pose와 Face의 가장 최근 결과를 결합하되, 두 결과의 시간 차이가 1초를 넘으면 오래된 값을 섞지 않습니다.
-
-#### 모니터암 자동 추종
-
-Motor 1·2의 사용자 X 위치는 다음 방식으로 계산합니다.
-
-```text
-ToF user X = 센서 원점 + 필터링된 ToF 거리
-Vision 거리 = 보정 거리 × 보정 눈 간격 / 현재 눈 간격
-Vision user X = 현재 모니터 X + Vision 거리
-
-Fused user X = 0.7 × ToF user X + 0.3 × Vision user X
-목표 Monitor X = Fused user X - 사용자·모니터 목표 거리
-```
-
-- ToF와 Vision 모두 유효: 70:30 융합
-- 눈 랜드마크가 유실됨: ToF 단독 사용
-- ToF가 유실되거나 범위를 벗어남: Vision 단독 구동 금지, `SAFE_HOLD`
-- Motor 1·2: 목표 Monitor X와 높이로 IK 계산 후 SyncWrite 동시 이동
-- Motor 3·4: IMU Y/X 오차를 각각 Direct PID로 보정
-
-자동 추종은 `MEASURING` 상태이면서 사용자가 감지되고, 최신 Pose 결과가 `Optimal`이며 신뢰도 조건을 만족할 때만 허용됩니다. 비정상 자세에서는 모니터암이 자세를 따라가며 나쁜 자세를 고착시키지 않도록 `POSTURE_HOLD` 상태가 됩니다.
-
-#### 자세 알림과 기록
-
-비정상 자세가 설정된 시간 이상 유지되면 Hardware Process의 `PostureAlertService`가 알림을 생성하고, `BuzzerService`가 GPIO18의 수동 부저 패턴을 비동기로 실행합니다. 반복 경고가 설정 횟수에 도달하면 Strong Alert로 승격되고 해당 자세에 Cooldown이 적용됩니다.
-
-측정 결과는 약 0.5초 간격으로 UI에 반영되며 날짜별 CSV에 누적됩니다.
-
-```text
-WorkSpace/data/session_log/posture_log_YYYY-MM-DD.csv
-```
-
-UI에는 현재 자세, 신뢰도, 피로도, 경과 시간, 불안정 자세 TOP 3가 표시됩니다.
-
-### 5. 측정 종료와 앱 종료
-
-`카메라 끄기`를 누르면 추론을 먼저 중지하고 다음 종료 자세 이동을 요청합니다.
-
-```text
-Motor 1·2 → 휴식 자세
-Motor 3·4 → 저장된 센서 중립각
-  → 실제 각도 도착 확인(허용 오차 2°)
-  → ACK 수신 또는 12초 timeout
-  → 카메라 QThread만 종료
-```
-
-카메라를 꺼도 Vision/Hardware Process와 IPC 자원은 앱 안에서 유지하므로 다음 실행에서 재사용할 수 있습니다. 창 자체를 닫을 때는 카메라, Result Worker, Pose/Face/Hardware Process, Shared Memory, I2C/Serial/GPIO 자원을 모두 정리합니다.
-
-### 6. 일일 리포트
-
-`리포트` 버튼을 누르면 현재 Python 환경으로 다음 서버를 실행합니다.
-
-```bash
-python -m streamlit run WorkSpace/streamlit/app.py \
-  --server.headless=true \
-  --server.port=8501
-```
-
-Linux에서는 Chromium 키오스크 창, Windows에서는 Chrome/Edge 앱 창을 우선 사용합니다. 이미 서버가 실행 중이면 새 서버를 만들지 않고 브라우저만 다시 엽니다.
-
-## 하드웨어 구성
-
-| 장치 | 현재 기본 설정 | 역할 |
+| | V1 · Vision Pose Coach | V2 · AI 자세 코칭 모니터암 |
 |---|---|---|
-| Raspberry Pi 5 | Python 3.11 / Raspberry Pi OS | 전체 애플리케이션 실행 |
-| Camera | PiCamera2 우선, OpenCV fallback | Pose/Face 영상 입력 |
-| VL53L0X (HW-843) | I2C-3, `0x29`, BCM22/23 | 사용자 거리 측정 |
-| ADXL345 | I2C-1, `0x53` | 모니터 기울기 X/Y 측정 |
-| STS3215 Servo ×4 | `/dev/ttyACM0`, 1 Mbps, ID 1~4 | 모니터암과 짐벌 구동 |
-| Passive Buzzer | BCM18, 2 kHz PWM | 자세 경고 출력 |
+| 목표 | 자세 분석·알림·기록을 통한 자세 코칭 | 자세 코칭과 물리적인 모니터 환경 조절 결합 |
+| 주요 기능 | 자세·피로도 분석, PyQt 화면, 일일 리포트 | 사용자별 보정, 모니터 위치 추종, IMU PID 수평 유지 |
+| 확장 내용 | 비전 분석 결과를 사용자에게 전달 | 비전·UI·하드웨어를 멀티프로세스 구조로 통합 |
+| 소스 | [V1 저장소](https://github.com/VisionAITeamProject/VisionPoseCoach) | [현재 저장소](https://github.com/Dongmins11/POCO) |
 
-Servo 역할은 다음과 같습니다.
+현재 V2 기본 실행 모드는 `POSE_ONLY`로, 자세 판단과 모니터암 제어를 사용합니다. Face 피로도 분석은 기본 실행에서 비활성화되어 있습니다.
 
-| ID | Joint | 제어 |
-|---:|---|---|
-| 1 | `shoulder_lift` | 사용자 X 추종 IK |
-| 2 | `elbow_flex` | 사용자 X 추종 IK |
-| 3 | `wrist_flex` | IMU Y Direct PID |
-| 4 | `wrist_roll` | IMU X Direct PID |
+## 🎬 Demo
 
-> [!CAUTION]
-> Motor 1·2는 실제 모니터 무게를 지지하므로 주변 충돌물을 제거하고 팔과 모니터를 지지할 준비가 된 상태에서 초기 이동을 수행해야 합니다. 약 15Ω으로 측정된 수동 부저도 Raspberry Pi GPIO에 직접 연결하지 말고 NPN 구동 회로를 사용해야 합니다.
+[![POCO 모니터암 시연 영상](https://img.youtube.com/vi/UHQtAFz2T6M/hqdefault.jpg)](https://youtu.be/UHQtAFz2T6M)
 
-### ToF I2C-3 활성화
+**[▶ V2 시연 영상 보기](https://youtu.be/UHQtAFz2T6M)** · 썸네일을 클릭하면 YouTube에서 재생됩니다.
 
-`/boot/firmware/config.txt`에 다음 한 줄을 추가한 뒤 재부팅합니다.
+## 🖥️ Application Screens
 
-```text
-dtoverlay=i2c3-pi5,pins_22_23
-```
+### PyQt · 측정과 제어
 
-```bash
-sudo apt install -y i2c-tools
-sudo reboot
-i2cdetect -y 3
-```
+![PyQt 메인 화면](assets/pyqt-main.png)
 
-정상 연결이면 `0x29` 주소가 표시됩니다. 자세한 배선과 확인 방법은 `WorkSpace/hardware/BH_CODE/TOF_HW843_SETUP.md`를 참고하세요.
+**초기값 준비 → 기준값 측정 → 자세 측정 → 리포트 확인**을 한 화면에서 연결했습니다. 사용자 프로필과 수동 조작 화면으로 이동할 수 있고, 자세·측정 시간·센서 상태를 함께 표시합니다.
 
-## 설치 및 실행
+<details>
+<summary>설정 및 사용자 프로필 화면</summary>
 
-### Raspberry Pi 5 권장 설치
+![PyQt 설정 화면](assets/pyqt-settings.png)
 
-```bash
-git clone https://github.com/EmbeddedVisionPoseCoach/POCO.git
-cd POCO
+![사용자 프로필 선택 화면](assets/pyqt-profiles.png)
 
-git lfs install
-git lfs pull
+설정 화면에서 알림과 제어 관련 항목을 조정하고, 4개 프로필 슬롯으로 사용자별 보정값을 관리합니다.
 
-bash scripts/setup_pi.sh
-source .venv/bin/activate
+</details>
 
-pip install adafruit-circuitpython-vl53l0x adafruit-extended-bus smbus2 gpiozero
-python WorkSpace/pyQt/mainpyQt.py
-```
+*저장소의 실제 PyQt 코드를 Windows에서 실행해 캡처했습니다. 카메라·센서·모터를 연결하지 않은 초기 화면입니다.*
 
-`setup_pi.sh`는 Raspberry Pi OS의 시스템 PyQt/PiCamera 패키지를 활용하기 위해 `--system-site-packages` 방식의 `.venv`를 구성합니다. 모델, Scaler, MediaPipe Task 파일은 다음 경로에 있어야 합니다.
+### Streamlit · 자세 기록을 읽는 리포트
 
-```text
-WorkSpace/saved_model/
-WorkSpace/tasks/
-```
+![Streamlit 자세 분석 화면](assets/streamlit-report.png)
 
-> [!NOTE]
-> `WorkSpace/pyQt/start_pyqt.sh`에는 특정 장비의 절대 경로가 들어 있으므로 다른 설치 경로에서는 값을 수정하거나 위의 Python 직접 실행 명령을 사용하세요.
+날짜별 측정 로그를 읽어 **자세별 누적 시간, 정상·비정상 자세 분포, 가장 자주 나타난 문제와 피드백**을 표시합니다. 실시간 측정 화면에서 놓치기 쉬운 하루의 자세 패턴을 다시 확인할 수 있도록 구성했습니다.
 
-### Windows 개발 환경
+<details>
+<summary>문제 유형별 피드백과 시간대별 그래프</summary>
 
-Windows에서는 `requirements-win.txt`로 UI, 카메라, Vision 기능을 확인할 수 있습니다.
+![Streamlit 자세 피드백과 추이](assets/streamlit-feedback.png)
 
-```powershell
-py -3.11 -m venv .venv
-.venv\Scripts\activate
-pip install -r requirements-win.txt
-python WorkSpace\pyQt\mainpyQt.py
-```
+</details>
 
-Raspberry Pi 전용 I2C, GPIO, Servo 장치가 없으면 하드웨어는 준비 실패 상태가 되므로 전체 측정 절차 대신 UI/Vision 개발과 비실물 테스트 용도로 사용하세요.
+*실제 Streamlit 앱에 화면 확인용 예시 CSV를 입력해 캡처했습니다. 이미지의 시간·비율은 실제 실험 결과가 아닙니다.*
 
-## 주요 설정
+## 🏗️ System Architecture
 
-| 파일 | 내용 |
+![POCO 전체 시스템 아키텍처](assets/system-architecture.png)
+
+Raspberry Pi 안에서 **UI → 자세 판단 → 모니터암 제어 → 기록·리포트**가 연결됩니다. 다음 구조도는 이 중 직접 설계·통합한 프로세스와 데이터 전달 부분을 요약한 것입니다.
+
+![POCO 핵심 실행 구조](assets/runtime-structure.svg)
+
+| 데이터 | 전달 방식 | 설계 의도 |
+|---|---|---|
+| 카메라 영상 | Shared Memory Ring | 영상 데이터를 공유 슬롯으로 전달하고 자세 분석에 최신 프레임 사용 |
+| 자세·센서 상태 | 최신값 우선 Queue | 오래된 상태가 UI와 제어에 누적되는 것을 줄임 |
+| 보정·측정 명령, 완료·오류 응답 | 순서 유지 Queue | 상태 갱신과 달리 이벤트를 임의로 덮어쓰지 않음 |
+| 사용자 기준값·측정 기록 | JSON / CSV | 프로필 복원과 날짜별 리포트 생성 |
+
+<details>
+<summary>📋 준비부터 종료까지의 전체 동작 흐름도</summary>
+
+![개발완료보고서의 동작 흐름도](assets/workflow-report.png)
+
+개발완료보고서의 흐름도입니다. 신규 사용자의 보정, 기존 프로필 복원, 자세별 제어, 종료·리포트 흐름을 담았습니다. 현재 코드는 카메라 종료와 앱 전체 종료를 구분해 프로세스 자원을 관리합니다.
+
+</details>
+
+## 👨‍💻 My Contribution
+
+| 담당 영역 | 직접 구현한 내용 |
 |---|---|
-| `WorkSpace/pyQt/managers/vision_process_manager_profile.py` | `PROFILE_MODE`: `POSE_ONLY`, `FACE_ONLY`, `BOTH` |
-| `WorkSpace/modules/config.py` | 해상도, 모델 경로, 보정 시간, GRU Window/Stride, 라벨 |
-| `WorkSpace/config/monitor_arm_settings.json` | 링크 형상, 목표 거리, ToF/Vision 융합, IK 속도, 휴식 자세, Safety 정책 |
-| `WorkSpace/hardware/servo_calibration_result.json` | Servo ID, Zero, 방향, 안전 각도, Serial 장치 |
-| `WorkSpace/data/settings/hardware_control.json` | IMU LPF/Deadband, PID, Motor 3·4 Runtime 튜닝 |
-| `WorkSpace/data/settings/alarm_settings.json` | 자세 유지 시간, 부저 횟수, Strong Alert, Cooldown |
+| **PyQt UI** | 사용자 프로필 선택부터 보정·측정·종료까지 이어지는 화면과 실행 흐름 구현 |
+| **Streamlit 리포트** | 측정 기록을 바탕으로 자세별 시간·빈도·점수와 피드백을 확인하는 웹 리포트 구현 |
+| **구조 설계·코드 통합** | UI, 비전 분석, 센서·모터 제어의 역할과 데이터 전달 흐름을 나누고 하나의 실행 구조로 통합 |
+| **멀티프로세싱** | 비전 분석과 하드웨어 제어를 별도 프로세스로 분리하고 Shared Memory·Queue 기반 통신 적용 |
+| **모니터 수평제어** | IMU 기준값과 측정값의 차이를 PID로 보정해 Motor 3·4의 기울기 제어 구현 |
+| **성능 측정·개선** | 프레임 처리 지연·버퍼 누적을 분석하고 최신 프레임 우선 처리 방식 적용 |
 
-실행 중 알림 설정은 PyQt에서 저장하면 JSON 기록과 Hardware Process Runtime에 동시에 반영됩니다. 실시간 센서값은 SD 카드에 반복 기록하지 않고 `HARDWARE_STATE`와 Main Process의 메모리 Store에만 유지합니다.
+## ⚙️ Key Implementation
 
-## 프로젝트 구조
+### 1. 사용자 흐름과 리포트 연결
 
-```text
-POCO/
-├── README.md
-├── requirements.txt
-├── requirements-win.txt
-├── scripts/
-│   └── setup_pi.sh
-└── WorkSpace/
-    ├── pyQt/
-    │   ├── mainpyQt.py                       # PyQt 진입점과 사용자 흐름
-    │   ├── camera_worker_profile_all.py      # 카메라 QThread / 프레임 공급
-    │   ├── result_worker.py                  # 결과 통합 / UI / CSV 전달
-    │   ├── monitor_arm_preparation_dialog.py # 초기 준비·수동 제어 UI
-    │   ├── user_profile_dialog.py            # 4슬롯 프로필 UI
-    │   ├── managers/
-    │   │   └── vision_process_manager_profile.py
-    │   ├── processes/
-    │   │   ├── pose_process_profile.py
-    │   │   ├── face_process_profile.py
-    │   │   └── hardware_process.py
-    │   ├── services/                         # 보정, GRU, 센서, 모터, 안전, 알림
-    │   ├── ipc/                              # Queue와 Shared Memory Ring
-    │   └── ui/                               # Qt Designer UI
-    ├── modules/                              # 공통 설정, Feature, Logger
-    ├── hardware/
-    │   ├── motor_control/                    # STS3215 Driver/Controller
-    │   └── servo_calibration_result.json
-    ├── config/
-    │   └── monitor_arm_settings.json
-    ├── saved_model/                          # TFLite 모델, Scaler, Baseline
-    ├── tasks/                                # MediaPipe Landmarker Task
-    ├── data/
-    │   ├── settings/
-    │   ├── session_log/
-    │   └── user_profiles/
-    └── streamlit/                            # 일일 리포트 앱과 전처리
-```
+신규 사용자는 모니터암 준비와 기준값 보정을 거쳐 측정을 시작하고, 기존 사용자는 저장된 프로필을 다시 적용하도록 구성했습니다. 자세·거리·IMU 기준값과 모터 각도를 묶어 관리하고, 측정 결과는 CSV로 기록해 Streamlit 리포트로 연결했습니다.
 
-## 테스트
+**프로필 선택 → 모니터암 준비·사용자 보정 → 실시간 측정·코칭 → 기록 저장 → 일일 리포트**
 
-Raspberry Pi 실물 없이 모니터암 계산과 주요 상태 머신을 검사할 수 있습니다.
+### 2. UI·비전·하드웨어 처리 분리
 
-```bash
-source .venv/bin/activate
+카메라 입력은 PyQt 프로세스에서 관리하고, 연산량이 큰 자세 분석과 센서·모터 제어는 별도 프로세스로 분리했습니다. 영상은 Shared Memory로 전달하고, 상태와 명령은 Queue로 주고받도록 구성했습니다.
 
-python WorkSpace/pyQt/hardware_logic_selftest.py
-python WorkSpace/pyQt/test_user_profile_and_safety.py
-```
+카메라는 한 곳에서 입력을 관리하고, Hardware Process는 I2C·Serial 장치의 접근을 담당합니다. UI에서는 장치에 직접 접근하는 대신 명령을 보내고, 처리 결과와 최신 상태를 받아 표시합니다.
 
-실제 모터를 연결하기 전에는 Servo Calibration과 통신 상태를 별도 확인하세요. 하드웨어 상세 문서는 `WorkSpace/hardware/`와 `WorkSpace/pyQt/README_MONITOR_ARM_CODE_MERGE.md`에 있습니다.
+최신 값이 중요한 상태 정보와 순서를 보장해야 하는 명령·응답을 구분해, 오래된 상태가 쌓이는 문제와 제어 이벤트가 누락되는 문제를 각각 다루었습니다.
 
-## 팀원
+### 3. IMU 기반 PID 모니터 수평제어
 
-| 조병현 | 신동민 | 이종현 | 최은비 |
-|:---:|:---:|:---:|:---:|
-| Pose 모델·튜닝 및 데이터 수집 | 리포트 웹 및 데이터 수집 | Face 모델·튜닝 및 데이터 수집 | 카메라 수평 제어, 부저·알림 및 데이터 수집 |
+사용자 보정 시 저장한 IMU 기준값을 바탕으로 기울기 오차를 계산하고, PID 출력으로 Motor 3·4의 목표 각도를 갱신했습니다.
 
-기존 [VisionPoseCoach README](https://github.com/VisionAITeamProject/VisionPoseCoach/blob/main/README.md)의 프로젝트 목표와 기능 구성을 계승하고, 현재 `mainpyQt.py`에서 실제로 실행되는 멀티프로세스 Vision·Hardware 통합 흐름을 기준으로 이 문서를 갱신했습니다.
+- **Motor 3**: IMU Y축 기반 기울기 보정
+- **Motor 4**: IMU X축 기반 기울기 보정
+- PID 출력을 각속도로 사용해 제어 주기만큼 목표 각도에 반영
+- 최종 목표 각도는 보정된 모터 안전 범위로 제한
+- 모터 명령은 공통 MotorService를 통해 전달
+
+모니터의 전후 위치 추종과 수평 유지를 함께 실행할 수 있도록 기존 모니터암 제어 코드와 통합했습니다.
+
+### 4. 통합 과정에서 적용한 데이터·자원 관리
+
+| 설계 항목 | 구현 방식 |
+|---|---|
+| 공유 프레임 보호 | 슬롯의 프레임을 로컬 메모리로 복사한 뒤 슬롯 반환. 추론은 복사본 사용 |
+| PyQt 내부 상태 보호 | `RLock`으로 갱신·읽기 보호, `deepcopy`로 상태 복사본 반환 |
+| 상태·이벤트 전달 분리 | 상태는 최신값 Queue, 명령·완료·오류는 순서 유지 Queue 사용 |
+| 종료 순서 | 생산자 프로세스 → 결과 수신 스레드 → Queue 정리. 자식 프로세스 종료 후 공유 메모리 해제 |
+| 여러 세션의 리포트 집계 | `timestamp` 기준 중복 처리·구간 분리. 1초당 1행을 전제로 기록 수 기반 시간 집계 |
+
+## 🔧 Troubleshooting
+
+### 1. 멀티프로세싱 이후에도 누적되는 프레임 지연
+
+| 단계 | 내용 |
+|---|---|
+| **문제 발생** | 카메라 입력은 약 **30 FPS**, 자세 분석은 약 **25~29 FPS**로 처리 속도에 차이가 있어 대기 프레임과 판단 지연이 누적되었습니다. |
+| **문제 해결 과정** | 버퍼 크기를 늘리는 대신 소비 정책을 변경했습니다.<br>**대기 프레임 확인 → 최신 프레임 선택 → 과거 프레임 건너뜀** 순서로 현재 자세를 우선 처리했습니다. |
+| **결과** | 버퍼 포화 이후의 대기 지연이 감소했고, 자세 판단이 현재 입력을 더 빠르게 반영했습니다. 당시 측정 결과는 아래와 같습니다. |
+
+![최신 프레임 처리와 공유 슬롯 반환 순서](assets/frame-buffer.svg)
+
+| 지표 | 개선 전 · 버퍼 포화 이후 | 개선 후 |
+|---|---:|---:|
+| 프레임 처리 지연 | 약 1.3초 | 약 15ms |
+| 자세 판단 완료 지연 | 약 1.35초 | 약 50ms |
+| 대기 프레임 수 | 대부분 32개 | 약 1~3개 |
+
+*개발완료보고서의 당시 32슬롯 환경 측정값입니다. 현재 코드는 4슬롯이며, 위 수치는 모델 자체의 추론 속도가 아닌 대기 지연 개선 결과입니다.*
+
+<details>
+<summary>Overrun과 Skip을 구분한 이유</summary>
+
+| 항목 | 의미 | 확인할 내용 |
+|---|---|---|
+| Overrun | 빈 슬롯이 없어 새 입력을 버림 | 누적값이 남아 있는지, 현재도 계속 증가하는지 구분 |
+| Skip | 최신 프레임 처리를 위해 과거 프레임을 건너뜀 | 실시간성을 위한 의도적 생략 |
+| Pending / 지연 | 현재 대기량과 처리까지 걸린 시간 | 프레임이 계속 쌓이고 있는지 함께 확인 |
+
+</details>
+
+### 2. 자세 분석이 피로도 분석의 연속 프레임 확보를 방해
+
+| 단계 | 내용 |
+|---|---|
+| **문제 발생** | 기존에는 자세 분석과 피로도 분석을 하나의 동기적인 흐름에서 처리했습니다. 자세 추론이 길어지면서 피로도 분석에 전달되는 프레임이 줄어들어, 시계열 분석에 필요한 연속 프레임 확보가 어려웠습니다. |
+| **문제 해결 과정** | 분석 작업을 별도 프로세스로 분리하고 Shared Memory Ring으로 프레임을 전달하도록 구조를 변경했습니다. 이후 Pose에서 발생한 버퍼 누적은 1번의 최신 프레임 우선 처리로 개선했습니다. |
+| **결과** | 분석 작업을 분리할 수 있는 실행 구조를 마련했습니다. 현재는 **Pose와 하드웨어 제어만 활성화**되어 있으며, Face의 연속 프레임 확보와 분석 성능이 최종 검증되었다는 의미는 아닙니다. |
+
+### 3. 사용자·카메라 조건에 따른 정상 자세 오분류 · 팀 공통
+
+| 단계 | 내용 |
+|---|---|
+| **문제 발생** | 체형·착석 위치·카메라 각도에 따라 특징값이 달라져, 정상 자세인데도 거북목으로 분류되는 사례가 발생했습니다. |
+| **문제 해결 과정** | 사용자 정상 자세의 Baseline을 측정하고, **실시간 특징값 − 사용자 Baseline**을 입력에 반영했습니다. 사용자별 보정값을 프로필로 저장·복원하는 흐름과 연결했습니다. |
+| **결과** | 개발완료보고서에서 정상 자세의 거북목 오분류 해소와 사용자·카메라 조건의 영향 감소를 확인했습니다. 해당 사례의 개선 결과이며, 모든 사용자에 대한 일반화 성능을 뜻하지 않습니다. |
+
+*1·2번은 멀티프로세싱과 프레임 처리 과정의 발생 사례, 3번은 팀의 AI 오분류 개선 사례입니다. 모델 개발과 개인 담당 범위는 My Contribution에서 구분했습니다.*
+
+## 📂 Code & Documents
+
+| 확인할 내용 | 경로 |
+|---|---|
+| PyQt 실행·사용자 흐름 | [mainpyQt.py](WorkSpace/pyQt/mainpyQt.py) |
+| 프로세스 생성·관리 | [vision_process_manager_profile.py](WorkSpace/pyQt/managers/vision_process_manager_profile.py) |
+| 최신 프레임 전달 | [shared_frame_ring.py](WorkSpace/pyQt/ipc/shared_frame_ring.py) |
+| 상태·이벤트 Queue | [queue_utils.py](WorkSpace/pyQt/ipc/queue_utils.py) |
+| IMU 수평제어 | [motor34_controller.py](WorkSpace/pyQt/services/motor34_controller.py) |
+| UI 공유 상태 보호 | [hardware_state_store.py](WorkSpace/pyQt/services/hardware_state_store.py) |
+| 프로세스·스레드 종료 순서 | [camera_worker_profile_all.py](WorkSpace/pyQt/camera_worker_profile_all.py) |
+| 웹 리포트 | [Streamlit](WorkSpace/streamlit/) |
+| 세션별 기록 전처리·집계 | [data_loader.py](WorkSpace/streamlit/preprocess/data_loader.py) · [summary_builder.py](WorkSpace/streamlit/preprocess/summary_builder.py) |
+| 설치·실행·하드웨어 설정 | [Setup & Operation](docs/setup-and-operation.md) |
+
+<details>
+<summary>📄 개발 자료와 이전 버전</summary>
+
+- [V1 · Vision Pose Coach](https://github.com/VisionAITeamProject/VisionPoseCoach)
+- [개발완료보고서](https://drive.google.com/file/d/16OyNF7ngtve8rrRyiLknU3rjZ7oI_OXE/view)
+- [V2 시연 영상](https://youtu.be/UHQtAFz2T6M)
+
+</details>
