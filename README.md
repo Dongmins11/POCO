@@ -145,11 +145,11 @@ Raspberry Pi 안에서 **UI → 자세 판단 → 모니터암 제어 → 기록
 
 **프로필 선택 → 모니터암 준비·사용자 보정 → 실시간 측정·코칭 → 기록 저장 → 일일 리포트**
 
-![사용자 자세와 IMU 기준값 보정](assets/demo/calibration.jpg)
+![사용자 자세와 IMU 기준값 보정](assets/demo/calibration.gif)
 
 **사용자별 기준값 보정** — 정상 자세를 기준으로 자세·IMU 값을 설정하고, 이후 자세 판단과 모니터 수평제어에 사용합니다.
 
-![실시간 자세 분석과 피드백](assets/demo/posture-feedback.jpg)
+![실시간 자세 분석과 피드백](assets/demo/posture-feedback.gif)
 
 **실시간 자세 분석과 피드백** — 카메라 영상과 현재 자세 판정을 함께 표시하고, 비정상 자세가 지속되면 알림으로 자세 교정을 유도합니다.
 
@@ -174,11 +174,11 @@ Raspberry Pi 안에서 **UI → 자세 판단 → 모니터암 제어 → 기록
 
 모니터의 전후 위치 추종과 수평 유지를 함께 실행할 수 있도록 기존 모니터암 제어 코드와 통합했습니다.
 
-![사용자 위치에 따른 모니터암 동작](assets/demo/monitor-tracking.jpg)
+![사용자 위치에 따른 모니터암 동작](assets/demo/monitor-tracking.gif)
 
 **모니터 위치 추종** — 정상 자세에서 사용자의 위치 변화에 맞춰 모니터와의 거리를 조절하는 시스템 동작입니다.
 
-![IMU 기반 짐벌 자동 보정](assets/demo/imu-leveling.jpg)
+![IMU 기반 짐벌 자동 보정](assets/demo/imu-leveling.gif)
 
 **IMU 기반 수평 보정** — 모니터암 위치가 바뀌는 동안 화면 기울기를 보정하는 장면입니다. 이 중 Motor 3·4의 IMU PID 수평제어를 담당했습니다.
 
