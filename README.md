@@ -10,7 +10,9 @@ POCO는 카메라 영상에서 신체 특징을 추출하고, **사용자별 기
 
 | 👁️ 자세 인식 | 🔔 코칭·환경 조절 | 📊 기록·분석 |
 |---|---|---|
-| 카메라 → MediaPipe 특징 추출 → 개인별 기준값 보정 → GRU 분류 | 자세 알림 · 정상 자세에서 모니터 위치 추종 · 수평 유지 | 날짜별 기록 · 자세 분포 · 문제 유형별 피드백 |
+| 카메라 → MediaPipe 특징 추출 → 개인별 기준값 보정 → GRU 모델 추론 | 자세 알림 · 정상 자세에서 모니터 위치 추종 · 수평 유지 | 날짜별 기록 · 자세 분포 · 문제 유형별 피드백 |
+
+<br>
 
 <details open>
 <summary>🦾 V2 확장 · 4축 모니터암 프로토타입</summary>
@@ -29,6 +31,8 @@ POCO는 카메라 영상에서 신체 특징을 추출하고, **사용자별 기
 | My Role | PyQt UI·Streamlit 리포트, 소프트웨어 구조 설계·코드 통합, 멀티프로세싱, IMU 기반 PID 수평제어, 성능 측정·분석 |
 | Platform | Raspberry Pi 5 · 카메라 · 4축 모니터암 |
 
+<br>
+
 ### 🛠️ Stack
 
 ![Python](https://img.shields.io/badge/Python-3776AB?style=flat-square&logo=python&logoColor=FFD343)
@@ -43,6 +47,8 @@ POCO는 카메라 영상에서 신체 특징을 추출하고, **사용자별 기
 
 자세 인식 파이프라인은 MediaPipe와 TensorFlow Lite 기반 GRU 모델을 사용합니다.
 
+<br>
+
 ## 🌱 Project Evolution
 
 | | V1 · Vision Pose Coach | V2 · AI 자세 코칭 모니터암 |
@@ -52,13 +58,15 @@ POCO는 카메라 영상에서 신체 특징을 추출하고, **사용자별 기
 | 확장 내용 | 비전 분석 결과를 사용자에게 전달 | 비전·UI·하드웨어를 멀티프로세스 구조로 통합 |
 | 소스 | [V1 저장소](https://github.com/VisionAITeamProject/VisionPoseCoach) | [현재 저장소](https://github.com/Dongmins11/POCO) |
 
-현재 V2 기본 실행 모드는 `POSE_ONLY`로, 자세 판단과 모니터암 제어를 사용합니다. Face 피로도 분석은 기본 실행에서 비활성화되어 있습니다.
+<br>
 
 ## 🎬 Demo
 
 [![POCO 모니터암 시연 영상](https://img.youtube.com/vi/UHQtAFz2T6M/hqdefault.jpg)](https://youtu.be/UHQtAFz2T6M)
 
 **[▶ V2 시연 영상 보기](https://youtu.be/UHQtAFz2T6M)** · 썸네일을 클릭하면 YouTube에서 재생됩니다.
+
+<br>
 
 ## 🖥️ Application Screens
 
@@ -87,14 +95,8 @@ POCO는 카메라 영상에서 신체 특징을 추출하고, **사용자별 기
 
 날짜별 측정 로그를 읽어 **자세별 누적 시간, 정상·비정상 자세 분포, 가장 자주 나타난 문제와 피드백**을 표시합니다. 실시간 측정 화면에서 놓치기 쉬운 하루의 자세 패턴을 다시 확인할 수 있도록 구성했습니다.
 
-<details>
-<summary>문제 유형별 피드백과 시간대별 그래프</summary>
 
-![Streamlit 자세 피드백과 추이](assets/streamlit-feedback.png)
-
-</details>
-
-*실제 Streamlit 앱에 화면 확인용 예시 CSV를 입력해 캡처했습니다. 이미지의 시간·비율은 실제 실험 결과가 아닙니다.*
+<br>
 
 ## 🏗️ System Architecture
 
@@ -120,6 +122,8 @@ Raspberry Pi 안에서 **UI → 자세 판단 → 모니터암 제어 → 기록
 
 </details>
 
+<br>
+
 ## 👨‍💻 My Contribution
 
 | 담당 영역 | 직접 구현한 내용 |
@@ -130,6 +134,8 @@ Raspberry Pi 안에서 **UI → 자세 판단 → 모니터암 제어 → 기록
 | **멀티프로세싱** | 비전 분석과 하드웨어 제어를 별도 프로세스로 분리하고 Shared Memory·Queue 기반 통신 적용 |
 | **모니터 수평제어** | IMU 기준값과 측정값의 차이를 PID로 보정해 Motor 3·4의 기울기 제어 구현 |
 | **성능 측정·개선** | 프레임 처리 지연·버퍼 누적을 분석하고 최신 프레임 우선 처리 방식 적용 |
+
+<br>
 
 ## ⚙️ Key Implementation
 
@@ -168,6 +174,8 @@ Raspberry Pi 안에서 **UI → 자세 판단 → 모니터암 제어 → 기록
 | 상태·이벤트 전달 분리 | 상태는 최신값 Queue, 명령·완료·오류는 순서 유지 Queue 사용 |
 | 종료 순서 | 생산자 프로세스 → 결과 수신 스레드 → Queue 정리. 자식 프로세스 종료 후 공유 메모리 해제 |
 | 여러 세션의 리포트 집계 | `timestamp` 기준 중복 처리·구간 분리. 1초당 1행을 전제로 기록 수 기반 시간 집계 |
+
+<br>
 
 ## 🔧 Troubleshooting
 
@@ -217,6 +225,8 @@ Raspberry Pi 안에서 **UI → 자세 판단 → 모니터암 제어 → 기록
 | **결과** | 개발완료보고서에서 정상 자세의 거북목 오분류 해소와 사용자·카메라 조건의 영향 감소를 확인했습니다. 해당 사례의 개선 결과이며, 모든 사용자에 대한 일반화 성능을 뜻하지 않습니다. |
 
 *1·2번은 멀티프로세싱과 프레임 처리 과정의 발생 사례, 3번은 팀의 AI 오분류 개선 사례입니다. 모델 개발과 개인 담당 범위는 My Contribution에서 구분했습니다.*
+
+<br>
 
 ## 📂 Code & Documents
 
