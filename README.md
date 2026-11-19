@@ -1,5 +1,7 @@
 # 🖥️ POCO | AI 기반 자세 코칭 시스템
 
+**[📖 프로젝트 상세 · 구현과 문제 해결 보기](https://dongmins11.github.io/portfolio/poco.html)**
+
 > 사용자의 자세를 인식하고, 실시간 피드백과 모니터 환경 조절, 일일 리포트로 연결하는 자세 코칭 시스템
 
 ## 📌 Overview
